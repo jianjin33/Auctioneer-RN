@@ -12,22 +12,15 @@ import {
 } from 'react-native';
 import Swiper from 'react-native-swiper';
 
+var APIS = require('../common/service')
+var util = require('../common/util')
 
 var dimensions = require('Dimensions');
 var {width} = dimensions.get('window');
 var {height} = dimensions.get('window');
-var HOME_BANNER_URL='https://test.pecoo.cn/pecooservice/api/indexPage/queryBanner'
-var HOME_AUCTION_URL='https://test.pecoo.cn/pecooservice/api/indexPage/queryQualityAuction'
-var HOME_RECOM_URL='https://test.pecoo.cn/pecooservice/api/indexPage/queryQualityGoods'
-var HOME_CATEGORY_URL='https://test.pecoo.cn/pecooservice/api/indexPage/queryMobileIndexKinds'
-
-
-
 
 var banners = [];
 var categroy = [];
-
-
 
 export default class MainHome extends Component {
   constructor(props){
@@ -40,7 +33,8 @@ export default class MainHome extends Component {
         bannerLoaded:false,
         cateLoaded:false,
         dataSource:ds,
-        recomDataSource:ds
+        recomDataSource:ds,
+        likeDataSource:ds
       };
   }
 
@@ -53,104 +47,76 @@ export default class MainHome extends Component {
     this.getHomeRecomData();
     //首页分类列表
     this.getCategoryData();
+    //猜你喜欢
+    this.getLikeData();
   }
 
   getBannerData(){
-    fetch(HOME_BANNER_URL)
-    .then((response)=>{
-      return response.json();
-    })
-    .then((responseData)=>{
+    util.getRequest(APIS.homeBanner, (responseData)=>{
       //获取到数据后 得到banner数组
       banners = responseData.banners;
       this.setState({
         bannerLoaded:true,
       });
-    })
-    .catch((error)=>{
-
-    })
+    }, ()=>{});
   }
 
   getHomeAuctionData(){
-    fetch(HOME_AUCTION_URL)
-    .then((response)=>{
-      return response.json();
-    })
-    .then((responseData)=>{
-      //获取到数据后 得到banner数组
+    util.getRequest(APIS.homeAuction,(responseData)=>{
       this.setState({
         dataSource:this.state.dataSource.cloneWithRows(responseData.auctions)
       });
-    })
-    .catch((error)=>{
-
-    })
+    }, ()=>{});
   }
 
   getHomeRecomData(){
-    fetch(HOME_RECOM_URL)
-    .then((response)=>{
-      return response.json();
-    })
-    .then((responseData)=>{
-      //获取到数据后
+    util.getRequest(APIS.homeQualityGoods,(responseData)=>{
       this.setState({
         recomDataSource:this.state.recomDataSource.cloneWithRows(responseData.goods)
       });
-    })
-    .catch((error)=>{
-
-    })
+    }, ()=>{});
   }
 
   getCategoryData(){
-    fetch(HOME_CATEGORY_URL)
-    .then((response)=>{
-      return response.json();
-    })
-    .then((responseData)=>{
-      //获取到数据后
-      categroy= responseData.goodsKinds;
-      this.setState({
-        cateLoaded:true,
+    util.getRequest(APIS.homeCategory,(responseData)=>{
+        categroy= responseData.goodsKinds;
+        this.setState({
+          cateLoaded:true,
       });
-    })
-    .catch((error)=>{
-
-    })
+    }, ()=>{});
   }
 
+  getLikeData(){
+    util.getRequest(APIS.popGoods,(responseData)=>{
+      this.setState({
+        likeDataSource:this.state.likeDataSource.cloneWithRows(responseData.goods)
+      });
+    }, ()=>{});
+  }
 
   renderImg(){
-          var imageViews=[];
-          for(var i=0;i<banners.length;i++){
-              imageViews.push(
-                  <Image
-                      key={i}
-                      style={{flex:1}}
-                      source={{uri:banners[i].picUrl}}
-                      />
-              );
-          }
-          imageViews.push(<View sytle={{width,height:280,justifyContent:'center',alignItems:'center'}}>
-            <Text>请稍后，正在努力加载中。。。</Text>
-          </View>);
-          return imageViews;
-      }
+    var imageViews=[];
+    for(var i=0;i<banners.length;i++){
+        imageViews.push(
+            <Image
+                key={i}
+                style={{flex:1}}
+                source={{uri:banners[i].picUrl}}
+                />
+        );
+    }
 
-  /*
-    加载过程中的提示
-  */
-  renderLoadingView(){
-    return(
-      <View style={flex=1}>
-        <Text>正在加载中...</Text>
-      </View>
-    );
+    imageViews.push(<View
+      sytle={{width,height:280,justifyContent:'center',alignItems:'center'}}
+      key={i}>
+      <Text style={{flex:1,textAlign:"center"}}>请稍后，正在加载中</Text>
+    </View>);
+    return imageViews;
   }
 
-  //拍卖会item的格式
+  /**
+   * 拍卖会item的格式
+   */
   _renderRow(auctions){
     return(
       <TouchableOpacity
@@ -158,14 +124,14 @@ export default class MainHome extends Component {
           this.onItemPress(auctions);
         }}>
         <View style={styles.rowContainer}>
-            <Image
-              resizeMode = {'contain'}
-              style={styles.thumbnail}
-              source={{uri: auctions.auctionThumPic}}/>
-            <View style={styles.textContainer}>
-              <Text style={styles.auctionTitle}>{auctions.name}</Text>
-              <Text style={styles.time}>{auctions.startTime}</Text>
-            </View>
+          <Image
+            resizeMode = {'contain'}
+            style={styles.thumbnail}
+            source={{uri: auctions.auctionThumPic}}/>
+          <View style={styles.textContainer}>
+            <Text style={styles.auctionTitle}>{auctions.name}</Text>
+            <Text style={styles.time}>{auctions.startTime}</Text>
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -175,8 +141,9 @@ export default class MainHome extends Component {
     Alert.alert('ProductId',auctions.pkId);
   }
 
-
-  //渲染分割线
+  /**
+   * 渲染分割线
+   */
   _renderSeperator(sectionID:number,rowID:number){
     var style={
       width:10,
@@ -187,20 +154,19 @@ export default class MainHome extends Component {
     );
   }
 
-
   //今日推荐 item的格式
   _renderRecomRow(goods){
     return(
       <TouchableOpacity>
         <View style={styles.recomContainer}>
-            <Image
-              resizeMode = {'contain'}
-              style={styles.recomThumbnail}
-              source={{uri: goods.thumbnailUrl}}/>
-            <View style={styles.recomTextContainer}>
-              <Text style={styles.goodsName} numberOfLines={1}>{goods.goodsName}</Text>
-              <Text style={styles.goodsPrice}>起拍价:{goods.priceUnit}{goods.startPrice}</Text>
-            </View>
+          <Image
+            resizeMode = {'contain'}
+            style={styles.recomThumbnail}
+            source={{uri: goods.thumbnailUrl}}/>
+          <View style={styles.recomTextContainer}>
+            <Text style={styles.goodsName} numberOfLines={1}>{goods.goodsName}</Text>
+            <Text style={styles.goodsPrice}>起拍价:{goods.priceUnit}{goods.startPrice}</Text>
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -221,19 +187,20 @@ export default class MainHome extends Component {
       return this.renderLoadingView();
     }
 
-    return (
-    //  for(var j = 0; j < categroy.length; j++) {
-        <View style={{width,height:230}}>
+    var categoryRow = [];
+    for(var j = 0; j < categroy.length; j++) {
+      var row = (
+        <View style={{width,height:230}} key={j}>
           <Image
-            resizeMode = {'contain'}
+            resizeMode = {'cover'}
             style={{flex:1}}
-            source={{uri: categroy[1].picPhone}}/>
-          <Text style={styles.cateTextContainer}>{categroy[1].kindDesc}</Text>
-        </View>
-    //  }
-    );
+            source={{uri: categroy[j].picPhone}}/>
+          <Text style={styles.cateTextContainer}>{categroy[j].kindDesc}</Text>
+      </View>);
+      categoryRow.push(row)
+    }
+    return categoryRow;
   }
-
 
   render() {
     return (
@@ -245,7 +212,6 @@ export default class MainHome extends Component {
           </View>
           <View style={styles.searchView}>
             <Image
-              sytle={styles.searchIcon}
               source={require('../../res/images/search_img.png')}/>
           </View>
         </View>
@@ -266,7 +232,6 @@ export default class MainHome extends Component {
                  {this.renderImg()}
              </Swiper>
           </View>
-
           {/*竞拍拍卖会标题*/}
           <View style={styles.smallTitle}>
             <View style={{width:45,height:0.5,backgroundColor:'#333333',marginRight:10}}/>
@@ -313,6 +278,30 @@ export default class MainHome extends Component {
           {/*首页分类*/}
           {this.renderCategory()}
 
+          {/*20px的间隙*/}
+          <View style={{width,height:10,backgroundColor:'#EFEFF5',marginTop:15}}></View>
+
+          {/*猜你喜欢标题*/}
+          <View style={styles.smallTitle}>
+            <View style={{width:45,height:0.5,backgroundColor:'#333333',marginRight:10}}/>
+            <Text style={styles.titleText}>猜你喜欢</Text>
+            <View style={{width:45,height:0.5,backgroundColor:'#333333',marginLeft:10}}/>
+          </View>
+
+          {/*猜你喜欢内容*/}
+          <ListView
+            style={styles.recomListView}
+            showsHorizontalScrollIndicator = {false}
+            horizontal = {true}
+            dataSource={this.state.likeDataSource}
+            initialListSize={10}
+            renderRow={this._renderRecomRow.bind(this)}
+            renderSeparator={this._renderSeperator.bind(this)}
+          />
+
+          {/*20px的间隙*/}
+          <View style={{width,height:10,backgroundColor:'#EFEFF5',marginTop:15}}></View>
+
         </ScrollView>
       </View>
     );
@@ -347,10 +336,6 @@ const styles = StyleSheet.create({
     position:'absolute',
     right:0,
     justifyContent:'center',
-  },
-  searchIcon:{
-    width:10,
-    height:10,
   },
   smallTitle:{
     width,
@@ -420,14 +405,15 @@ const styles = StyleSheet.create({
     fontSize:12,
     color:'gray'
   },
-  //backgroundColor:'rgba(0,0,0,0.5)',
-    cateTextContainer:{
-      width,
-      height:50,
-      position:'absolute',
-      backgroundColor:'rgba(0,0,0,0.2)',
-      bottom:0,
-      alignItems:'center',
-      justifyContent:'center'
-    }
+  cateTextContainer:{
+    width,
+    height:50,
+    position:'absolute',
+    backgroundColor:'rgba(255,255,255,0.5)',
+    bottom:0,
+    fontSize:16,
+    color:'black',
+    textAlign:'center',
+    paddingTop:12
+  }
 });
